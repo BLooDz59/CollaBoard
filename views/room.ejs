@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>CollaBoard</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="">
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font: 13px Helvetica, Arial; }
+            form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+            form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+            form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+            #messages { list-style-type: none; margin: 0; padding: 0; }
+            #messages li { padding: 5px 10px; }
+            #messages li:nth-child(odd) { background: #eee; }
+            #canvas { border: red solid 5px;}
+        </style>
+    </head>
+    <body>
+        <canvas id="canvas" width="400" height="400"></canvas>
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="./script.js"></script>
+        <script>
+            const socket = io();
+            const roomId = "<%= roomId %>"
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+
+            var isDrawing = false;
+            var mouseX = 0;
+            var mouseY = 0;
+            const bounds = canvas.getBoundingClientRect();
+
+            socket.emit('new-user', roomId);
+
+            socket.on('draw', (data) => {
+                ctx.beginPath();
+                ctx.ellipse(data.x, data.y, 10, 10, 0, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.closePath();
+            });
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDrawing = true;
+                mouseX = e.clientX - bounds.left;
+                mouseY = e.clientY;
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if(isDrawing) {
+                    var data = {
+                        x: mouseX,
+                        y: mouseY
+                    }
+                    socket.emit('draw', roomId, data);
+                    mouseX = e.clientX - bounds.left;
+                    mouseY = e.clientY;
+                }
+            });
+
+            canvas.addEventListener('mouseup', (e) => {
+                if(isDrawing) {
+                    var data = {
+                        x: mouseX,
+                        y: mouseY
+                    };
+                    socket.emit('draw', roomId, data);
+                    isDrawing = false;
+                    mouseX = 0;
+                    mouseY = 0;
+                }
+            });
+        </script>
+    </body>
+</html>
