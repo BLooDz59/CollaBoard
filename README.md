@@ -22,3 +22,5 @@ Collaborative Board Web Project
 - navigation rédacteur
 - navigation lecteur, resynchro rédacteur
 - arrivée en retard
+## Installation
+To install, first clone this repository. Then run `npm install` and `node server.js`.
