@@ -32,6 +32,7 @@
             const bounds = canvas.getBoundingClientRect();
 
             socket.emit('new-user', roomId);
+            socket.emit('synchronize', roomId);
 
             function undo() {
                 if(undoStates.length > 0) {
@@ -63,6 +64,16 @@
             function getCanvasState() {
                 return canvas.toDataURL();
             }
+
+            socket.on('request-data', (writerID) => {
+                if(socket.id == writerID) {
+                    socket.emit('canvas-update', roomId, canvas.toDataURL());
+                } 
+            })
+            
+            socket.on('canvas-update', (state) => {
+                renderCanvasState(state);
+            });
 
             socket.on('draw', (data) => {
                 ctx.beginPath();

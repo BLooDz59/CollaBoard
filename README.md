@@ -11,6 +11,7 @@ Collaborative Board Web Project
 - évitement des conflits lecteurs / rédacteur
 - pas de persistance des tracés côté serveur
 - undo, redo multiples
+- arrivée en retard
 ### Working On
 - il transmet (par un moyen ad hoc) une URL réduite qui donne le droit lecteur
 - un client dédié se charge de sauvegarder les tracés à la volée
@@ -21,6 +22,5 @@ Collaborative Board Web Project
 - multipage
 - navigation rédacteur
 - navigation lecteur, resynchro rédacteur
-- arrivée en retard
 ## Installation
 To install, first clone this repository. Then run `npm install` and `node server.js`.
