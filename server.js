@@ -7,6 +7,8 @@ const chalk = require('chalk');
 app.set('views', './views');
 app.set('view engine', 'ejs');
 
+const listeningPort = 3000;
+
 const rooms = {}
 
 app.get('/', (req, res) => {
@@ -19,8 +21,8 @@ app.get('/:room', (req, res) => {
 
 app.post('/create', (req, res) => {
   var key = uuid.v4();
-  info("Room " + key + " created");
-  rooms[key] = { users: {} };
+  info("Room " + key + " was created");
+  rooms[key] = { users: {}, writer: "" };
   res.redirect(key);
 })
 
@@ -28,8 +30,13 @@ io.on('connection', (socket) => {
   socket.on('new-user', (roomId) => {
     socket.join(roomId);
     var status;
-    Object.keys(rooms[roomId].users).length === 0 ? status = "W" : status = "R";
-    rooms[roomId].users[socket.id] = { status: status};
+    var room = rooms[roomId];
+    Object.keys(room.users).length === 0 ? status = "W" : status = "R";
+    if(status == "W"){
+      room.writer = socket.id;
+    }
+    room.users[socket.id] = { status: status };
+    info('Client ' + socket.id + ' joined the room ' + roomId);
   })
 
   socket.on('draw', (roomId, data) => {
@@ -37,13 +44,24 @@ io.on('connection', (socket) => {
       io.to(roomId).emit('draw', data);
     }
   })
+
+  socket.on('canvas-update', (roomID, canvasState) => {
+    io.to(roomID).emit('canvas-update', canvasState);
+  })
+
+  socket.on('synchronize', (roomID) => {
+    info('Synchronize client ' + socket.id + ' with the server');
+    io.to(roomID).emit('request-data', rooms[roomID].writer);
+  })
+
   socket.on('disconnect', () => {
     info('User disconnected');
   })
 });
 
-http.listen(3000, () => {
-  console.log('Example app listening on port 3000!')
+http.listen(listeningPort, () => {
+  info('Running Collaboard App');
+  info('Listening Port : ' + listeningPort);
 })
 
 function info(msg) {
