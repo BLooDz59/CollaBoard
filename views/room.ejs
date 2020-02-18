@@ -16,6 +16,10 @@
         <canvas id="canvas" width="400" height="400"></canvas>
         <button onclick="undo()"> Undo </button>
         <button onclick="redo()"> Redo </button>
+        <button onclick="changeSize(10)"> Size 1 </button>
+        <button onclick="changeSize(20)"> Size 2 </button>
+        <button onclick="changeColor('red')"> Red </button>
+        <button onclick="changeColor('blue')"> Blue </button>
         <script src="/socket.io/socket.io.js"></script>
         <script>
             const socket = io();
@@ -29,10 +33,28 @@
             var isDrawing = false;
             var mouseX = 0;
             var mouseY = 0;
+            var penSize = 10;
+            var penColor = 'black';
             const bounds = canvas.getBoundingClientRect();
 
             socket.emit('new-user', roomId);
             socket.emit('synchronize', roomId);
+
+            function changeSize(size) {
+                socket.emit('changePenSize', size, roomId);
+            }
+
+            function changeColor(color) {
+                socket.emit('changePenColor', color, roomId);
+            }
+
+            socket.on('changePenSize', (size) => {
+                penSize = size;
+            });
+
+            socket.on('changePenColor', (color) => {
+                penColor = color;
+            });
 
             function undo() {
                 if(undoStates.length > 0) {
@@ -65,19 +87,27 @@
                 return canvas.toDataURL();
             }
 
-            socket.on('request-data', (writerID) => {
+            socket.on('request-context', (writerID) => {
                 if(socket.id == writerID) {
-                    socket.emit('canvas-update', roomId, canvas.toDataURL());
+                    var data = {
+                        canvas: canvas.toDataURL(),
+                        penColor: penColor,
+                        penSize: penSize
+                    }
+                    socket.emit('context-sending', roomId, data);
                 } 
             })
             
-            socket.on('canvas-update', (state) => {
-                renderCanvasState(state);
+            socket.on('context-sending', (data) => {
+                renderCanvasState(data.canvas);
+                changeSize(data.penSize);
+                changeColor(data.penColor);
             });
 
             socket.on('draw', (data) => {
                 ctx.beginPath();
-                ctx.ellipse(data.x, data.y, 10, 10, 0, 0, 2 * Math.PI);
+                ctx.ellipse(data.x, data.y, penSize, penSize, 0, 0, 2 * Math.PI);
+                ctx.fillStyle = penColor;
                 ctx.fill();
                 ctx.closePath();
             });

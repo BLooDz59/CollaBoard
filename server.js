@@ -41,17 +41,25 @@ io.on('connection', (socket) => {
 
   socket.on('draw', (roomId, data) => {
     if(rooms[roomId].users[socket.id].status == "W") {
-      io.to(roomId).emit('draw', data);
+      emitRoomEvent('draw', roomId, data);
     }
   })
 
-  socket.on('canvas-update', (roomID, canvasState) => {
-    io.to(roomID).emit('canvas-update', canvasState);
+  socket.on('changePenSize', (penSize, roomID) => {
+    emitRoomEvent('changePenSize', roomID, penSize);
+  })
+
+  socket.on('changePenColor', (penColor, roomID) => {
+    emitRoomEvent('changePenColor', roomID, penColor);
+  })
+
+  socket.on('context-sending', (roomID, data) => {
+    io.to(roomID).emit('context-sending', data);
   })
 
   socket.on('synchronize', (roomID) => {
     info('Synchronize client ' + socket.id + ' with the server');
-    io.to(roomID).emit('request-data', rooms[roomID].writer);
+    io.to(roomID).emit('request-context', rooms[roomID].writer);
   })
 
   socket.on('disconnect', () => {
@@ -63,6 +71,10 @@ http.listen(listeningPort, () => {
   info('Running Collaboard App');
   info('Listening Port : ' + listeningPort);
 })
+
+function emitRoomEvent(eventTag, roomID, data) {
+  io.to(roomID).emit(eventTag, data);
+}
 
 function info(msg) {
   console.log(chalk.cyan.bold('Info - ') + msg);
