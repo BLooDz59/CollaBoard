@@ -55,6 +55,10 @@ io.on('connection', (socket) => {
     emitRoomEvent('changePenColor', roomID, penColor);
   })
 
+  socket.on('changeTool', (tool, roomID) => {
+    emitRoomEvent('changeTool', roomID, tool);
+  })
+
   socket.on('context-sending', (roomID, data) => {
     io.to(roomID).emit('context-sending', data);
   })

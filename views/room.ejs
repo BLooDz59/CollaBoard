@@ -42,7 +42,7 @@
             <h2 class="clbrd-page-subtitle">Tools</h2>
             <ul id="tools-list">
                 <li id="pencil" class="tools__item active" onclick="changeTool('pencil')"><img src="/inc/assets/pictos/pencil.svg" /> pencil</li>
-                <li id="highlighter" class="tools__item"><img src="/inc/assets/pictos/highlight.svg" /> highlight</li>
+                <li id="highlighter" class="tools__item" onclick="changeTool('highlighter')"><img src="/inc/assets/pictos/highlight.svg" /> highlight</li>
                 <li id="eraser" class="tools__item" onclick="changeTool('eraser')"><img src="/inc/assets/pictos/eraser.svg" /> eraser</li>
                 <li id="laser" class="tools__item"><img src="/inc/assets/pictos/laser.svg" /> laser</li>
             </ul>
@@ -88,9 +88,15 @@
                 });
                 if (tool == 'eraser') {
                     changeColor('white');
+                    socket.emit('changeTool', tool, roomId);
                 }
                 if (tool == 'pencil') {
                     changeColor('black');
+                    socket.emit('changeTool', tool, roomId);
+                }
+                if (tool == 'highlighter') {
+                    changeColor('black');
+                    socket.emit('changeTool' ,tool, roomId);
                 }
                 document.getElementById(tool).classList.add('active');
             }
@@ -102,6 +108,10 @@
             socket.on('changePenColor', (color) => {
                 penColor = color;
             });
+
+            socket.on('changeTool', (tool) => {
+                currentTool = tool;
+            })
 
             function undo() {
                 if(undoStates.length > 0) {
@@ -153,7 +163,12 @@
 
             socket.on('draw', (data) => {
                 ctx.beginPath();
-                ctx.ellipse(data.x, data.y, penSize, penSize, 0, 0, 2 * Math.PI);
+                if(currentTool == 'pencil' || currentTool == 'eraser') {
+                    ctx.ellipse(data.x, data.y, penSize, penSize, 0, 0, 2 * Math.PI);
+                }
+                if(currentTool == 'highlighter') {
+                    ctx.rect(data.x, data.y, penSize, penSize-5);
+                }
                 ctx.fillStyle = penColor;
                 ctx.fill();
                 ctx.closePath();

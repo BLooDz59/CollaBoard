@@ -14,11 +14,11 @@ Collaborative Board Web Project
 - arrivée en retard
 - stylo, couleur, épaisseur
 - gomme
+- surligneur, couleur épaisseur
 ### Working On
 - il transmet (par un moyen ad hoc) une URL réduite qui donne le droit lecteur
 - un client dédié se charge de sauvegarder les tracés à la volée
 - il les convertit en PDF
-- surligneur, couleur épaisseur
 - pointeur laser (tablette)
 - multipage
 - navigation rédacteur
