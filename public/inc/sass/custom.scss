@@ -1,0 +1,12 @@
+@import 'tools/mixins';
+@import 'tools/reset';
+@import 'tools/colors';
+@import 'tools/fonts';
+
+body {
+    padding: 0px 0px 0px 8rem;
+}
+
+@import 'elements/heading';
+@import 'elements/container';
+@import 'elements/navbar';

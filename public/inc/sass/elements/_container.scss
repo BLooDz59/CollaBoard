@@ -1,0 +1,121 @@
+.clbrd-wrapper {
+    @include flexCont();
+    &__canva {
+        @include brad(1rem);
+        @include itemFlex(0 0 70%);
+        background-color: white;
+        border: 5px solid $dark;
+        height: calc(100vh - 16.9rem - 8rem);
+        position: relative;
+        .drop-shadow {
+            @include brad(1rem);
+            background-color: $green;
+            bottom: -4rem;
+            left: -4rem;
+            position: absolute;
+            right: 4rem;
+            top: 4rem;
+            z-index: -1;
+        }
+    }
+    &__tools {
+        @include itemFlex(1);
+        margin-left: 4rem;
+        ul {
+            margin-top: 4rem;
+        }
+        .tools__item {
+            @include brad(10rem 0rem 0rem 10rem);
+            @include flexAlignItem(center);
+            @include flexCont();
+            font-size: 2.5rem;
+            font-weight: $fw-medium;
+            margin: 2rem 0;
+            padding: 2rem 2rem 2rem 3rem;
+            img {
+                margin-right: 2rem;
+            }
+            &.active {
+                background-color: $green;
+            }
+        }
+    }
+}
+
+.arrows-container {
+    @include flexCont();
+    position: absolute;
+    right: 2rem;
+    top: 2rem;
+    img {
+        cursor: pointer;
+        &:first-of-type {
+            margin-right: 1rem;
+        }
+    }
+}
+
+.picker {
+    left: 2rem;
+    position: absolute;
+    top: 2rem;
+    &__thickness {
+        @include flexCont();
+        span {
+            @include brad(50%);
+            @include transform(translate(-50%, -50%));
+            background-color: $dark;
+            left: 50%;
+            position: absolute;
+            top: 50%;
+            &.thin {
+                height: .8rem;
+                width: .8rem;
+            }
+            &.regular {
+                height: 1.6rem;
+                width: 1.6rem
+            }
+            &.medium {
+                height: 3.2rem;
+                width: 3.2rem
+            }
+            &.bold {
+                height: 4rem;
+                width: 4rem
+            }
+        }
+    }
+    &__colors {
+        @include flexCont();
+        margin-top: 1rem;
+        .circle {
+            &.red {
+                background-color: red;
+            }
+            &.blue {
+                background-color: blue;
+            }
+            &.green {
+                background-color: green;
+            }
+            &.yellow {
+                background-color: yellow;
+            }
+        }
+    }
+    .circle {
+        @include brad(50%);
+        border: .2rem solid black;
+        height: 5rem;
+        margin: 0 .2rem;
+        position: relative;
+        width: 5rem;
+        &:first-of-type {
+            margin-left: 0;
+        }
+        &:last-of-type {
+            margin-right: 0;
+        }
+    }
+}

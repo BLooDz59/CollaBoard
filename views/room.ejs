@@ -1,22 +1,54 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <title>CollaBoard</title>
-        <meta name="description" content="">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font: 13px Helvetica, Arial; }
-            #canvas { border: red solid 5px;}
-        </style>
-    </head>
-    <body>
-        <canvas id="canvas" width="400" height="400"></canvas>
-        <button onclick="undo()"> Undo </button>
-        <button onclick="redo()"> Redo </button>
-        <script src="/socket.io/socket.io.js"></script>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/inc/css/custom.css" />
+    <link rel="stylesheet" href="https://llespinasse.com/fonts/circular-std/stylesheet.css" />
+    <title>Collaboard</title>
+</head>
+<body>
+    <header class="site-header">
+        <h1 class="clbrd-page-title">Collaboard</h1>
+    </header>
+    <main class="clbrd-wrapper">
+        <!-- CANVAS -->
+        <div class="clbrd-wrapper__canva" id="canvasWrapper">
+            <canvas id="canvas"></canvas>
+            <!-- undo & redo arrows -->
+            <div class="arrows-container">
+                <img src="/inc/assets/pictos/undo.svg" alt="Undo" onclick="undo()"/>
+                <img src="/inc/assets/pictos/redo.svg" alt="Redo" onclick="redo()"/>
+            </div>
+            <!-- color & thickness picker -->
+            <div class="picker">
+                <div class="picker__thickness">
+                    <div class="circle" onclick="changeSize(3)"><span class="thin"></span></div>
+                    <div class="circle" onclick="changeSize(6)"><span class="regular"></span></div>
+                    <div class="circle" onclick="changeSize(12)"><span class="medium"></span></div>
+                    <div class="circle" onclick="changeSize(25)"><span class="bold"></span></div>
+                </div>
+                <div class="picker__colors">
+                    <div class="circle red" onclick="changeColor('red')"></div>
+                    <div class="circle blue" onclick="changeColor('blue')"></div>
+                    <div class="circle green" onclick="changeColor('green')"></div>
+                    <div class="circle yellow" onclick="changeColor('yellow')"></div>
+                </div>
+            </div>
+            <div class="drop-shadow"></div>
+        </div>
+         <!-- TOOLS  -->
+        <div class="clbrd-wrapper__tools">
+            <h2 class="clbrd-page-subtitle">Tools</h2>
+            <ul id="tools-list">
+                <li id="pencil" class="tools__item active" onclick="changeTool('pencil')"><img src="/inc/assets/pictos/pencil.svg" /> pencil</li>
+                <li id="highlighter" class="tools__item"><img src="/inc/assets/pictos/highlight.svg" /> highlight</li>
+                <li id="eraser" class="tools__item" onclick="changeTool('eraser')"><img src="/inc/assets/pictos/eraser.svg" /> eraser</li>
+                <li id="laser" class="tools__item"><img src="/inc/assets/pictos/laser.svg" /> laser</li>
+            </ul>
+        </div>
+    </main>
+    <script src="/socket.io/socket.io.js"></script>
         <script>
             const socket = io();
             const roomId = "<%= roomId %>"
@@ -29,10 +61,47 @@
             var isDrawing = false;
             var mouseX = 0;
             var mouseY = 0;
+            var penSize = 10;
+            var penColor = 'black';
+            var currentTool = 'pencil';
             const bounds = canvas.getBoundingClientRect();
 
             socket.emit('new-user', roomId);
             socket.emit('synchronize', roomId);
+
+            canvas.width = document.getElementById('canvasWrapper').clientWidth;
+            canvas.height = document.getElementById('canvasWrapper').clientHeight;
+
+            function changeSize(size) {
+                socket.emit('changePenSize', size, roomId);
+            }
+
+            function changeColor(color) {
+                socket.emit('changePenColor', color, roomId);
+            }
+
+            function changeTool(tool) {
+                document.getElementById('tools-list').childNodes.forEach(element => {
+                    if(element.nodeType == 1 ) {
+                        element.classList.remove('active');
+                    }
+                });
+                if (tool == 'eraser') {
+                    changeColor('white');
+                }
+                if (tool == 'pencil') {
+                    changeColor('black');
+                }
+                document.getElementById(tool).classList.add('active');
+            }
+
+            socket.on('changePenSize', (size) => {
+                penSize = size;
+            });
+
+            socket.on('changePenColor', (color) => {
+                penColor = color;
+            });
 
             function undo() {
                 if(undoStates.length > 0) {
@@ -65,19 +134,27 @@
                 return canvas.toDataURL();
             }
 
-            socket.on('request-data', (writerID) => {
+            socket.on('request-context', (writerID) => {
                 if(socket.id == writerID) {
-                    socket.emit('canvas-update', roomId, canvas.toDataURL());
+                    var data = {
+                        canvas: canvas.toDataURL(),
+                        penColor: penColor,
+                        penSize: penSize
+                    }
+                    socket.emit('context-sending', roomId, data);
                 } 
             })
             
-            socket.on('canvas-update', (state) => {
-                renderCanvasState(state);
+            socket.on('context-sending', (data) => {
+                renderCanvasState(data.canvas);
+                changeSize(data.penSize);
+                changeColor(data.penColor);
             });
 
             socket.on('draw', (data) => {
                 ctx.beginPath();
-                ctx.ellipse(data.x, data.y, 10, 10, 0, 0, 2 * Math.PI);
+                ctx.ellipse(data.x, data.y, penSize, penSize, 0, 0, 2 * Math.PI);
+                ctx.fillStyle = penColor;
                 ctx.fill();
                 ctx.closePath();
             });
@@ -85,7 +162,7 @@
             canvas.addEventListener('mousedown', (e) => {
                 isDrawing = true;
                 mouseX = e.clientX - bounds.left;
-                mouseY = e.clientY;
+                mouseY = e.clientY - bounds.top;
             });
 
             canvas.addEventListener('mousemove', (e) => {
@@ -96,7 +173,7 @@
                     }
                     socket.emit('draw', roomId, data);
                     mouseX = e.clientX - bounds.left;
-                    mouseY = e.clientY;
+                    mouseY = e.clientY - bounds.top;
                 }
             });
 
@@ -115,5 +192,5 @@
                 }
             });
         </script>
-    </body>
+</body>
 </html>
