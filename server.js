@@ -1,4 +1,5 @@
-const app = require('express')();
+const express = require('express');
+const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const uuid = require('uuid');
@@ -6,6 +7,7 @@ const chalk = require('chalk');
 
 app.set('views', './views');
 app.set('view engine', 'ejs');
+app.use(express.static('public'));
 
 const listeningPort = 3000;
 

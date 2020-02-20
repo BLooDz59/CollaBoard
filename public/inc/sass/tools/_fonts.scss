@@ -1,0 +1,12 @@
+$font: 'CircularStd';
+
+$fw-regular: 300;
+$fw-medium: 500;
+$fw-bold: 700;
+$fw-black: 800;
+$fw-heavy: 900;
+
+* {
+    font-family: $font;
+    font-size: 1.6rem;
+}

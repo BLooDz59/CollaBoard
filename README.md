@@ -13,12 +13,13 @@ Collaborative Board Web Project
 - undo, redo multiples
 - arrivée en retard
 - stylo, couleur, épaisseur
+- gomme
 ### Working On
 - il transmet (par un moyen ad hoc) une URL réduite qui donne le droit lecteur
 - un client dédié se charge de sauvegarder les tracés à la volée
 - il les convertit en PDF
 - surligneur, couleur épaisseur
-- gomme, pointeur laser (tablette)
+- pointeur laser (tablette)
 - multipage
 - navigation rédacteur
 - navigation lecteur, resynchro rédacteur
