@@ -46,14 +46,19 @@
                 <li id="eraser" class="tools__item" onclick="changeTool('eraser')"><img src="/inc/assets/pictos/eraser.svg" /> eraser</li>
                 <li id="laser" class="tools__item"><img src="/inc/assets/pictos/laser.svg" /> laser</li>
             </ul>
+            <button id="shareBtn" onclick="copyInvitationLink()">Share Link</button>
         </div>
+
     </main>
     <script src="/socket.io/socket.io.js"></script>
         <script>
             const socket = io();
             const roomId = "<%= roomId %>"
+
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
+            const bounds = canvas.getBoundingClientRect();
+
             var undoStates = [];
             var redoStates = [];
             var currentState = getCanvasState();
@@ -64,13 +69,28 @@
             var penSize = 10;
             var penColor = 'black';
             var currentTool = 'pencil';
-            const bounds = canvas.getBoundingClientRect();
 
-            socket.emit('new-user', roomId);
-            socket.emit('synchronize', roomId);
+            setup();
 
-            canvas.width = document.getElementById('canvasWrapper').clientWidth;
-            canvas.height = document.getElementById('canvasWrapper').clientHeight;
+            function setup() {
+                socket.emit('new-user', roomId);
+                socket.emit('synchronize', roomId);
+    
+                canvas.width = document.getElementById('canvasWrapper').clientWidth;
+                canvas.height = document.getElementById('canvasWrapper').clientHeight;
+            }
+
+            function copyInvitationLink() {
+                const el = document.createElement('textarea');
+                el.value = "http://localhost:3000/" + roomId;
+                el.setAttribute('readonly', '');
+                el.style.position = 'absolute';
+                el.style.left = '-9999px';
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+            }
 
             function changeSize(size) {
                 socket.emit('changePenSize', size, roomId);

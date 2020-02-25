@@ -2,8 +2,10 @@ const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
-const uuid = require('uuid');
+const shortid = require('shortid');
 const chalk = require('chalk');
+
+const DEBUG = false;
 
 app.set('views', './views');
 app.set('view engine', 'ejs');
@@ -18,14 +20,20 @@ app.get('/', (req, res) => {
 })
 
 app.get('/:room', (req, res) => {
-  res.render('room', { roomId: req.params.room});
+  if(rooms[req.params.room] != undefined) {
+    res.render('room', { roomId: req.params.room});
+  }
+  else {
+    //Maybe we can create a room instead
+    res.render('index');
+  }
 })
 
-app.post('/create', (req, res) => {
-  var key = uuid.v4();
+app.post('/', (req, res) => {
+  var key = shortid.generate();
   info("Room " + key + " was created");
   rooms[key] = { users: {}, writer: "" };
-  res.redirect(key);
+  res.render('room', { roomId: key});
 })
 
 io.on('connection', (socket) => {
@@ -87,5 +95,5 @@ function info(msg) {
 }
 
 function debug(msg) {
-  console.log(chalk.gray.bold('Debug - ') + msg);
+  if (DEBUG) console.log(chalk.gray.bold('Debug - ') + msg);
 }
