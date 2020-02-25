@@ -44,7 +44,7 @@
                 <li id="pencil" class="tools__item active" onclick="changeTool('pencil')"><img src="/inc/assets/pictos/pencil.svg" /> pencil</li>
                 <li id="highlighter" class="tools__item" onclick="changeTool('highlighter')"><img src="/inc/assets/pictos/highlight.svg" /> highlight</li>
                 <li id="eraser" class="tools__item" onclick="changeTool('eraser')"><img src="/inc/assets/pictos/eraser.svg" /> eraser</li>
-                <li id="laser" class="tools__item"><img src="/inc/assets/pictos/laser.svg" /> laser</li>
+                <li id="laser" class="tools__item" onclick="changeTool('laser')"><img src="/inc/assets/pictos/laser.svg" /> laser</li>
             </ul>
             <button id="shareBtn" onclick="copyInvitationLink()">Share Link</button>
         </div>
@@ -66,11 +66,95 @@
             var isDrawing = false;
             var mouseX = 0;
             var mouseY = 0;
-            var penSize = 10;
-            var penColor = 'black';
-            var currentTool = 'pencil';
+
+            var tool = {
+                name: 'pencil',
+                size: 10,
+                color: 'black'
+            }
 
             setup();
+
+            socket.on('toolUpdate', (data) => {
+                tool[data.key] = data.value;
+            })
+
+            socket.on('request-context', (writerID) => {
+                if(socket.id == writerID) {
+                    var data = {
+                        canvas: canvas.toDataURL(),
+                        tool: tool
+                    }
+                    socket.emit('sending-context', roomId, data);
+                } 
+            })
+            
+            socket.on('sending-context', (data) => {
+                renderCanvasState(data.canvas);
+                changeSize(data.tool.size);
+                changeColor(data.tool.color);
+                changeTool(data.tool.name);
+            });
+            
+            socket.on('draw', (data) => {
+                ctx.beginPath();
+                if(tool.name == 'pencil' || tool.name == 'eraser') {
+                    ctx.ellipse(data.x, data.y, tool.size, tool.size, 0, 0, 2 * Math.PI);
+                }
+                if(tool.name == 'highlighter') {
+                    ctx.rect(data.x, data.y, tool.size, tool.size-5);
+                }
+                ctx.fillStyle = tool.color;
+                ctx.fill();
+                ctx.closePath();
+            });
+            
+            canvas.addEventListener('mousedown', (e) => {
+                isDrawing = true;
+                updateMousePosition(e);
+            });
+            
+            canvas.addEventListener('mousemove', (e) => {
+                if(isDrawing) {
+                    emitEvent('draw', { x: mouseX, y: mouseY });
+                    updateMousePosition(e);
+                }
+            });
+            
+            canvas.addEventListener('mouseup', (e) => {
+                if(isDrawing) {
+                    isDrawing = false;
+                    emitEvent('draw', { x: mouseX, y: mouseY });
+                    resetMousePosition();
+                    addUndoState(currentState);
+                    currentState = getCanvasState();
+                }
+            });
+
+            function changeSize(size) {
+                emitEvent('toolUpdate', { key: 'size', value: size });
+            }
+
+            function changeColor(color) {
+                if (tool.name != 'eraser') emitEvent('toolUpdate', { key: 'color', value: color });
+            }
+
+            function changeTool(name) {
+                updateActiveToolUI(name);
+                switch (name) {
+                    case 'eraser':
+                        changeColor('white');
+                        break;
+                    case 'laser':
+                        changeColor('red');
+                        break;
+                    default:
+                        changeColor('black');
+                        break;
+            
+                }
+                emitEvent('toolUpdate', { key: 'name', value: name })
+            }
 
             function setup() {
                 socket.emit('new-user', roomId);
@@ -91,51 +175,10 @@
                 document.execCommand('copy');
                 document.body.removeChild(el);
             }
-
-            function changeSize(size) {
-                socket.emit('changePenSize', size, roomId);
-            }
-
-            function changeColor(color) {
-                socket.emit('changePenColor', color, roomId);
-            }
-
-            function changeTool(tool) {
-                document.getElementById('tools-list').childNodes.forEach(element => {
-                    if(element.nodeType == 1 ) {
-                        element.classList.remove('active');
-                    }
-                });
-                if (tool == 'eraser') {
-                    changeColor('white');
-                    socket.emit('changeTool', tool, roomId);
-                }
-                if (tool == 'pencil') {
-                    changeColor('black');
-                    socket.emit('changeTool', tool, roomId);
-                }
-                if (tool == 'highlighter') {
-                    changeColor('black');
-                    socket.emit('changeTool' ,tool, roomId);
-                }
-                document.getElementById(tool).classList.add('active');
-            }
-
-            socket.on('changePenSize', (size) => {
-                penSize = size;
-            });
-
-            socket.on('changePenColor', (color) => {
-                penColor = color;
-            });
-
-            socket.on('changeTool', (tool) => {
-                currentTool = tool;
-            })
-
+            
             function undo() {
                 if(undoStates.length > 0) {
-                    redoStates.push(getCanvasState());
+                    addRedoState(getCanvasState());
                     var state = undoStates.pop();
                     currentState = state;
                     renderCanvasState(state);
@@ -144,7 +187,7 @@
 
             function redo() {
                 if(redoStates.length > 0) {
-                    undoStates.push(getCanvasState());
+                    addUndoState(getCanvasState())
                     var futurState = redoStates.pop();
                     currentState = futurState;
                     renderCanvasState(futurState);
@@ -164,68 +207,36 @@
                 return canvas.toDataURL();
             }
 
-            socket.on('request-context', (writerID) => {
-                if(socket.id == writerID) {
-                    var data = {
-                        canvas: canvas.toDataURL(),
-                        penColor: penColor,
-                        penSize: penSize
-                    }
-                    socket.emit('context-sending', roomId, data);
-                } 
-            })
+            function emitEvent(eventName, data) {
+                socket.emit(eventName, roomId, data);
+            }
             
-            socket.on('context-sending', (data) => {
-                renderCanvasState(data.canvas);
-                changeSize(data.penSize);
-                changeColor(data.penColor);
-            });
+            function updateMousePosition(evt) {
+                mouseX = evt.clientX - bounds.left;
+                mouseY = evt.clientY - bounds.top;
+            }
 
-            socket.on('draw', (data) => {
-                ctx.beginPath();
-                if(currentTool == 'pencil' || currentTool == 'eraser') {
-                    ctx.ellipse(data.x, data.y, penSize, penSize, 0, 0, 2 * Math.PI);
-                }
-                if(currentTool == 'highlighter') {
-                    ctx.rect(data.x, data.y, penSize, penSize-5);
-                }
-                ctx.fillStyle = penColor;
-                ctx.fill();
-                ctx.closePath();
-            });
+            function resetMousePosition() {
+                mouseX = 0;
+                mouseY = 0;
+            }
 
-            canvas.addEventListener('mousedown', (e) => {
-                isDrawing = true;
-                mouseX = e.clientX - bounds.left;
-                mouseY = e.clientY - bounds.top;
-            });
+            function addUndoState(state) {
+                undoStates.push(state);
+            }
 
-            canvas.addEventListener('mousemove', (e) => {
-                if(isDrawing) {
-                    var data = {
-                        x: mouseX,
-                        y: mouseY
+            function addRedoState(state) {
+                redoStates.push(state);
+            }
+
+            function updateActiveToolUI(tool) {
+                document.getElementById('tools-list').childNodes.forEach(element => {
+                    if(element.nodeType == 1 ) {
+                        element.classList.remove('active');
                     }
-                    socket.emit('draw', roomId, data);
-                    mouseX = e.clientX - bounds.left;
-                    mouseY = e.clientY - bounds.top;
-                }
-            });
-
-            canvas.addEventListener('mouseup', (e) => {
-                if(isDrawing) {
-                    var data = {
-                        x: mouseX,
-                        y: mouseY
-                    };
-                    socket.emit('draw', roomId, data);
-                    isDrawing = false;
-                    mouseX = 0;
-                    mouseY = 0;
-                    undoStates.push(currentState);
-                    currentState = getCanvasState();
-                }
-            });
+                });
+                document.getElementById(tool).classList.add('active');
+            }
         </script>
 </body>
 </html>
