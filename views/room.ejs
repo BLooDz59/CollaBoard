@@ -16,9 +16,10 @@
         <div class="clbrd-wrapper__canva" id="canvasWrapper">
             <canvas id="canvas"></canvas>
             <!-- undo & redo arrows -->
-            <div class="arrows-container" id="arrowsUR">
-                <img src="/inc/assets/pictos/undo.svg" alt="Undo" onclick="undo()"/>
-                <img src="/inc/assets/pictos/redo.svg" alt="Redo" onclick="redo()"/>
+            <div class="arrows-container">
+                <img src="/inc/assets/pictos/undo.svg" alt="Undo" onclick="undo()" id="undoPicto"/>
+                <img src="/inc/assets/pictos/redo.svg" alt="Redo" onclick="redo()" id="redoPicto"/>
+                <img src="/inc/assets/pictos/synchronize.svg" alt="Synchronize" onclick="synchronize()" id="syncPicto"/>
             </div>
             <!-- color & thickness picker -->
             <div class="picker" id="divPicker">
@@ -46,11 +47,13 @@
                 <li id="eraser" class="tools__item" onclick="changeTool('eraser')"><img src="/inc/assets/pictos/eraser.svg" /> eraser</li>
                 <li id="laser" class="tools__item" onclick="changeTool('laser')"><img src="/inc/assets/pictos/laser.svg" /> laser</li>
             </ul>
+        </div>
+        <div>
             <button id="shareBtn" onclick="copyInvitationLink()">Share Link</button>
             <button id="newPageButton" onclick="createNewPage()">New Page</button>
             <button id="changePage" onclick="changeCurrentPage()"> Change</button>
+            <button id="asyncChangePage" onclick="asyncChangePage()">Change Async</button>
         </div>
-
     </main>
     <script src="/socket.io/socket.io.js"></script>
         <script>
@@ -64,6 +67,7 @@
             var currentPageIndex = 0;
 
             var isDrawing = false;
+            var async = false;
 
             var mouse = {
                 x: 0,
@@ -84,38 +88,37 @@
 
             socket.on('request-context', (writerID) => {
                 if(socket.id == writerID) {
-                    var data = {
-                        canvas: canvas.toDataURL(),
-                        pages: pages,
-                        currentPage: getCurrentPage(),
-                        tool: tool
-                    }
-                    socket.emit('sending-context', roomId, data);
+                    sendContext();
                 } 
             })
             
             socket.on('sending-context', (data) => {
-                renderCanvasState(data.currentPage.currentState);
-                data.pages.forEach((el) => {
-                    pages.push(new Page(el.id, el.currentState, el.undoStates, el.redoStates));
-                })
-                currentPageIndex = pages.indexOf(data.currentPage);
-                changeSize(data.tool.size);
-                changeColor(data.tool.color);
-                changeTool(data.tool.name);
+                if(!async) {
+                    renderCanvasState(data.currentPage.currentState);
+                    pages = [];
+                    data.pages.forEach((el) => {
+                        pages.push(new Page(el.id, el.currentState, el.undoStates, el.redoStates));
+                    })
+                    currentPageIndex = pages.indexOf(data.currentPage);
+                    changeSize(data.tool.size);
+                    changeColor(data.tool.color);
+                    changeTool(data.tool.name);
+                }
             });
             
             socket.on('draw', (data) => {
-                ctx.beginPath();
-                if(tool.name == 'pencil' || tool.name == 'eraser') {
-                    ctx.ellipse(data.x, data.y, tool.size, tool.size, 0, 0, 2 * Math.PI);
+                if(!async) {
+                    ctx.beginPath();
+                    if(tool.name == 'pencil' || tool.name == 'eraser') {
+                        ctx.ellipse(data.x, data.y, tool.size, tool.size, 0, 0, 2 * Math.PI);
+                    }
+                    if(tool.name == 'highlighter') {
+                        ctx.rect(data.x, data.y, tool.size, tool.size-5);
+                    }
+                    ctx.fillStyle = tool.color;
+                    ctx.fill();
+                    ctx.closePath();
                 }
-                if(tool.name == 'highlighter') {
-                    ctx.rect(data.x, data.y, tool.size, tool.size-5);
-                }
-                ctx.fillStyle = tool.color;
-                ctx.fill();
-                ctx.closePath();
             });
 
             socket.on('draw-canvas-state', (data) => {
@@ -125,7 +128,16 @@
             socket.on('setupReaderClient', () => {
                 document.getElementById('tools').style.display="none";
                 document.getElementById('divPicker').style.display="none";
-                document.getElementById('arrowsUR').style.display="none";
+                document.getElementById('undoPicto').style.display="none";
+                document.getElementById('redoPicto').style.display="none";
+                document.getElementById('shareBtn').style.display="none";
+                document.getElementById('newPageButton').style.display="none";
+                document.getElementById('changePage').style.display="none";
+            })
+
+            socket.on('setupWriterClient', () => {
+                document.getElementById('syncPicto').style.display="none";
+                document.getElementById('asyncChangePage').style.display="none";
             })
             
             canvas.addEventListener('mousedown', (e) => {
@@ -195,6 +207,11 @@
                 el.select();
                 document.execCommand('copy');
                 document.body.removeChild(el);
+            }
+
+            function synchronize() {
+                async = false;
+                socket.emit('synchronize', roomId);
             }
             
             function undo() {
@@ -276,9 +293,10 @@
 
             function createNewPage() {
                 getCurrentPage().currentState = getCanvasState();
-                currentPageIndex++;
+                currentPageIndex = pages.length;
                 clearCanvas();
                 pages.push(new Page(currentPageIndex, getCanvasState()));
+                sendContext();
             }
 
             function changeCurrentPage() {
@@ -286,6 +304,24 @@
                 if (currentPageIndex < pages.length - 1) currentPageIndex++;
                 else currentPageIndex = 0;
                 renderCanvasState(getCurrentPage().currentState);
+                sendContext();
+            }
+
+            function asyncChangePage() {
+                async = true;
+                if (currentPageIndex < pages.length - 1) currentPageIndex++;
+                else currentPageIndex = 0;
+                renderCanvasState(getCurrentPage().currentState);
+            }
+
+            function sendContext() {
+                var data = {
+                    canvas: canvas.toDataURL(),
+                    pages: pages,
+                    currentPage: getCurrentPage(),
+                    tool: tool
+                }
+                socket.emit('sending-context', roomId, data);
             }
         </script>
 </body>

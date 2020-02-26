@@ -38,6 +38,7 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     addNewUser(roomId, socket.id);
     if (rooms[roomId].users[socket.id].status == "R") io.to(socket.id).emit('setupReaderClient');
+    else io.to(socket.id).emit('setupWriterClient');
   })
 
   socket.on('draw', (roomId, data) => {
