@@ -16,12 +16,12 @@ Collaborative Board Web Project
 - gomme
 - surligneur, couleur épaisseur
 - il transmet (par un moyen ad hoc) une URL réduite qui donne le droit lecteur
+- multipage
+- navigation rédacteur
 ### Working On
 - un client dédié se charge de sauvegarder les tracés à la volée
 - il les convertit en PDF
 - pointeur laser (tablette)
-- multipage
-- navigation rédacteur
 - navigation lecteur, resynchro rédacteur
 - undo/redo sync with clients
 ## Installation

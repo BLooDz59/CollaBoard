@@ -37,6 +37,7 @@ io.on('connection', (socket) => {
   socket.on('new-user', (roomId) => {
     socket.join(roomId);
     addNewUser(roomId, socket.id);
+    if (rooms[roomId].users[socket.id].status == "R") io.to(socket.id).emit('setupReaderClient');
   })
 
   socket.on('draw', (roomId, data) => {
@@ -60,7 +61,7 @@ io.on('connection', (socket) => {
   })
 
   socket.on('sending-context', (roomID, data) => {
-    emitRoomEvent('sending-context', roomID, data);
+    socket.to(roomID).emit('sending-context', data);
   })
 
   socket.on('synchronize', (roomID) => {
@@ -78,7 +79,7 @@ http.listen(listeningPort, () => {
   info('Listening Port : ' + listeningPort);
 })
 
-function emitRoomEvent(eventTag, roomID, data) {
+function emitRoomEvent(eventTag, roomID, data = {}) {
   io.to(roomID).emit(eventTag, data);
 }
 
