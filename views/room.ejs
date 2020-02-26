@@ -64,8 +64,11 @@
             var currentPageIndex = 0;
 
             var isDrawing = false;
-            var mouseX = 0;
-            var mouseY = 0;
+
+            var mouse = {
+                x: 0,
+                y: 0
+            }
 
             var tool = {
                 name: 'pencil',
@@ -116,7 +119,6 @@
             });
 
             socket.on('draw-canvas-state', (data) => {
-                console.log("coucou");
                 renderCanvasState(data);
             })
 
@@ -133,7 +135,7 @@
             
             canvas.addEventListener('mousemove', (e) => {
                 if(isDrawing) {
-                    emitEvent('draw', { x: mouseX, y: mouseY });
+                    emitEvent('draw', { x: mouse.x, y: mouse.y });
                     updateMousePosition(e);
                 }
             });
@@ -141,7 +143,7 @@
             canvas.addEventListener('mouseup', (e) => {
                 if(isDrawing) {
                     isDrawing = false;
-                    emitEvent('draw', { x: mouseX, y: mouseY });
+                    emitEvent('draw', { x: mouse.x, y: mouse.y });
                     resetMousePosition();
                     getCurrentPage().addUndoState(getCurrentPage().currentState);
                     getCurrentPage().currentState = getCanvasState();
@@ -233,13 +235,13 @@
             }
             
             function updateMousePosition(evt) {
-                mouseX = evt.clientX - bounds.left;
-                mouseY = evt.clientY - bounds.top;
+                mouse.x = evt.clientX - bounds.left;
+                mouse.y = evt.clientY - bounds.top;
             }
 
             function resetMousePosition() {
-                mouseX = 0;
-                mouseY = 0;
+                mouse.x = 0;
+                mouse.y = 0;
             }
 
             function updateActiveToolUI(tool) {
