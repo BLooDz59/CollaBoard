@@ -16,12 +16,12 @@
         <div class="clbrd-wrapper__canva" id="canvasWrapper">
             <canvas id="canvas"></canvas>
             <!-- undo & redo arrows -->
-            <div class="arrows-container">
+            <div class="arrows-container" id="arrowsUR">
                 <img src="/inc/assets/pictos/undo.svg" alt="Undo" onclick="undo()"/>
                 <img src="/inc/assets/pictos/redo.svg" alt="Redo" onclick="redo()"/>
             </div>
             <!-- color & thickness picker -->
-            <div class="picker">
+            <div class="picker" id="divPicker">
                 <div class="picker__thickness">
                     <div class="circle" onclick="changeSize(3)"><span class="thin"></span></div>
                     <div class="circle" onclick="changeSize(6)"><span class="regular"></span></div>
@@ -38,7 +38,7 @@
             <div class="drop-shadow"></div>
         </div>
          <!-- TOOLS  -->
-        <div class="clbrd-wrapper__tools">
+        <div class="clbrd-wrapper__tools" id="tools">
             <h2 class="clbrd-page-subtitle">Tools</h2>
             <ul id="tools-list">
                 <li id="pencil" class="tools__item active" onclick="changeTool('pencil')"><img src="/inc/assets/pictos/pencil.svg" /> pencil</li>
@@ -47,6 +47,8 @@
                 <li id="laser" class="tools__item" onclick="changeTool('laser')"><img src="/inc/assets/pictos/laser.svg" /> laser</li>
             </ul>
             <button id="shareBtn" onclick="copyInvitationLink()">Share Link</button>
+            <button id="newPageButton" onclick="createNewPage()">New Page</button>
+            <button id="changePage" onclick="changeCurrentPage()"> Change</button>
         </div>
 
     </main>
@@ -58,14 +60,15 @@
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
             const bounds = canvas.getBoundingClientRect();
-
-            var undoStates = [];
-            var redoStates = [];
-            var currentState = getCanvasState();
+            var pages = [];
+            var currentPageIndex = 0;
 
             var isDrawing = false;
-            var mouseX = 0;
-            var mouseY = 0;
+
+            var mouse = {
+                x: 0,
+                y: 0
+            }
 
             var tool = {
                 name: 'pencil',
@@ -83,6 +86,8 @@
                 if(socket.id == writerID) {
                     var data = {
                         canvas: canvas.toDataURL(),
+                        pages: pages,
+                        currentPage: getCurrentPage(),
                         tool: tool
                     }
                     socket.emit('sending-context', roomId, data);
@@ -90,7 +95,11 @@
             })
             
             socket.on('sending-context', (data) => {
-                renderCanvasState(data.canvas);
+                renderCanvasState(data.currentPage.currentState);
+                data.pages.forEach((el) => {
+                    pages.push(new Page(el.id, el.currentState, el.undoStates, el.redoStates));
+                })
+                currentPageIndex = pages.indexOf(data.currentPage);
                 changeSize(data.tool.size);
                 changeColor(data.tool.color);
                 changeTool(data.tool.name);
@@ -108,6 +117,16 @@
                 ctx.fill();
                 ctx.closePath();
             });
+
+            socket.on('draw-canvas-state', (data) => {
+                renderCanvasState(data);
+            })
+
+            socket.on('setupReaderClient', () => {
+                document.getElementById('tools').style.display="none";
+                document.getElementById('divPicker').style.display="none";
+                document.getElementById('arrowsUR').style.display="none";
+            })
             
             canvas.addEventListener('mousedown', (e) => {
                 isDrawing = true;
@@ -116,7 +135,7 @@
             
             canvas.addEventListener('mousemove', (e) => {
                 if(isDrawing) {
-                    emitEvent('draw', { x: mouseX, y: mouseY });
+                    emitEvent('draw', { x: mouse.x, y: mouse.y });
                     updateMousePosition(e);
                 }
             });
@@ -124,10 +143,10 @@
             canvas.addEventListener('mouseup', (e) => {
                 if(isDrawing) {
                     isDrawing = false;
-                    emitEvent('draw', { x: mouseX, y: mouseY });
+                    emitEvent('draw', { x: mouse.x, y: mouse.y });
                     resetMousePosition();
-                    addUndoState(currentState);
-                    currentState = getCanvasState();
+                    getCurrentPage().addUndoState(getCurrentPage().currentState);
+                    getCurrentPage().currentState = getCanvasState();
                 }
             });
 
@@ -162,6 +181,8 @@
     
                 canvas.width = document.getElementById('canvasWrapper').clientWidth;
                 canvas.height = document.getElementById('canvasWrapper').clientHeight;
+
+                pages.push(new Page(currentPageIndex, getCanvasState()));
             }
 
             function copyInvitationLink() {
@@ -177,20 +198,22 @@
             }
             
             function undo() {
-                if(undoStates.length > 0) {
-                    addRedoState(getCanvasState());
-                    var state = undoStates.pop();
-                    currentState = state;
+                if(getCurrentPage().undoStates.length > 0) {
+                    getCurrentPage().addRedoState(getCanvasState());
+                    var state = getCurrentPage().undoStates.pop();
+                    getCurrentPage().currentState = state;
                     renderCanvasState(state);
+                    socket.emit('draw-canvas-state', roomId, state);
                 }
             }
 
             function redo() {
-                if(redoStates.length > 0) {
-                    addUndoState(getCanvasState())
-                    var futurState = redoStates.pop();
-                    currentState = futurState;
+                if(getCurrentPage().redoStates.length > 0) {
+                    getCurrentPage().addUndoState(getCanvasState());
+                    var futurState = getCurrentPage().redoStates.pop();
+                    getCurrentPage().currentState = futurState;
                     renderCanvasState(futurState);
+                    socket.emit('draw-canvas-state', roomId, futurState);
                 }
             }
 
@@ -198,7 +221,7 @@
                 var img = new Image();
                 img.src = state;
                 img.onload = function() { 
-                    ctx.clearRect(0,0,canvas.width,canvas.height);
+                    clearCanvas();
                     ctx.drawImage(img,0,0);
                 };
             }
@@ -212,21 +235,13 @@
             }
             
             function updateMousePosition(evt) {
-                mouseX = evt.clientX - bounds.left;
-                mouseY = evt.clientY - bounds.top;
+                mouse.x = evt.clientX - bounds.left;
+                mouse.y = evt.clientY - bounds.top;
             }
 
             function resetMousePosition() {
-                mouseX = 0;
-                mouseY = 0;
-            }
-
-            function addUndoState(state) {
-                undoStates.push(state);
-            }
-
-            function addRedoState(state) {
-                redoStates.push(state);
+                mouse.x = 0;
+                mouse.y = 0;
             }
 
             function updateActiveToolUI(tool) {
@@ -236,6 +251,41 @@
                     }
                 });
                 document.getElementById(tool).classList.add('active');
+            }
+
+            function clearCanvas() {
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+            }
+
+            function getCurrentPage() {
+                return pages[currentPageIndex];
+            }
+
+            function Page(id, currentState, undoStates = [], redoStates = []) {
+                this.id = id;
+                this.currentState = currentState;
+                this.undoStates = undoStates;
+                this.redoStates = redoStates;
+                this.addUndoState = function(state) {
+                    this.undoStates.push(state);
+                };
+                this.addRedoState = function(state) {
+                    this.redoStates.push(state);
+                }
+            }
+
+            function createNewPage() {
+                getCurrentPage().currentState = getCanvasState();
+                currentPageIndex++;
+                clearCanvas();
+                pages.push(new Page(currentPageIndex, getCanvasState()));
+            }
+
+            function changeCurrentPage() {
+                getCurrentPage().currentState = getCanvasState();
+                if (currentPageIndex < pages.length - 1) currentPageIndex++;
+                else currentPageIndex = 0;
+                renderCanvasState(getCurrentPage().currentState);
             }
         </script>
 </body>
