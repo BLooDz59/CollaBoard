@@ -20,9 +20,9 @@ Collaborative Board Web Project
 - navigation rédacteur
 - navigation lecteur, resynchro rédacteur
 - undo/redo sync with clients
-### Working On
 - un client dédié se charge de sauvegarder les tracés à la volée
 - il les convertit en PDF
+### Working On
 - pointeur laser (tablette)
 ## Installation
 To install, first clone this repository. Then run `npm install` and `node server.js`.

@@ -53,9 +53,11 @@
             <button id="newPageButton" onclick="createNewPage()">New Page</button>
             <button id="changePage" onclick="changeCurrentPage()"> Change</button>
             <button id="asyncChangePage" onclick="asyncChangePage()">Change Async</button>
+            <button id="exportPDFBtn" onclick="exportAsPDF()">Export As PDF</button>
         </div>
     </main>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.min.js"></script>
         <script>
             const socket = io();
             const roomId = "<%= roomId %>"
@@ -212,6 +214,12 @@
             function synchronize() {
                 async = false;
                 socket.emit('synchronize', roomId);
+            }
+
+            function exportAsPDF() {
+                var pdf = new jsPDF();
+                pdf.addImage(canvas.toDataURL("image/png", 1.0), 'PNG', 0, 0);
+                pdf.save("canvas.pdf");
             }
             
             function undo() {
