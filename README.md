@@ -18,11 +18,11 @@ Collaborative Board Web Project
 - il transmet (par un moyen ad hoc) une URL réduite qui donne le droit lecteur
 - multipage
 - navigation rédacteur
+- undo/redo sync with clients
 ### Working On
 - un client dédié se charge de sauvegarder les tracés à la volée
 - il les convertit en PDF
 - pointeur laser (tablette)
 - navigation lecteur, resynchro rédacteur
-- undo/redo sync with clients
 ## Installation
 To install, first clone this repository. Then run `npm install` and `node server.js`.

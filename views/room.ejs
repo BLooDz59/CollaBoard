@@ -115,6 +115,11 @@
                 ctx.closePath();
             });
 
+            socket.on('draw-canvas-state', (data) => {
+                console.log("coucou");
+                renderCanvasState(data);
+            })
+
             socket.on('setupReaderClient', () => {
                 document.getElementById('tools').style.display="none";
                 document.getElementById('divPicker').style.display="none";
@@ -196,6 +201,7 @@
                     var state = getCurrentPage().undoStates.pop();
                     getCurrentPage().currentState = state;
                     renderCanvasState(state);
+                    socket.emit('draw-canvas-state', roomId, state);
                 }
             }
 
@@ -205,6 +211,7 @@
                     var futurState = getCurrentPage().redoStates.pop();
                     getCurrentPage().currentState = futurState;
                     renderCanvasState(futurState);
+                    socket.emit('draw-canvas-state', roomId, futurState);
                 }
             }
 

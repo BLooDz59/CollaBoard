@@ -66,7 +66,11 @@ io.on('connection', (socket) => {
 
   socket.on('synchronize', (roomID) => {
     info('Synchronize client ' + socket.id + ' with the server');
-    emitRoomEvent('request-context', roomID, rooms[roomID].writer)
+    emitRoomEvent('request-context', roomID, rooms[roomID].writer);
+  })
+
+  socket.on('draw-canvas-state', (roomID, data) => {
+    socket.to(roomID).emit('draw-canvas-state', data);
   })
 
   socket.on('disconnect', () => {
